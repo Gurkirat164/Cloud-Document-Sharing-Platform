@@ -18,7 +18,11 @@ spring:
 
   flyway:
     enabled: true
-    clean-on-validation-error: true   # Handy during local schema iteration — NEVER in prod
+    # !! DANGER — DEV/LOCAL USE ONLY !!
+    # This will DROP and RECREATE your entire schema on any
+    # Flyway checksum mismatch. NEVER set this on a shared
+    # dev DB, CI database, or any environment with real data.
+    clean-on-validation-error: true
 
 # LocalStack endpoint override (comment out when using real AWS credentials locally)
 aws:

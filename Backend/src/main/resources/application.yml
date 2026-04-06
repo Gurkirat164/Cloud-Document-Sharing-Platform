@@ -50,11 +50,11 @@ jwt:
 
 # ===== AWS =====
 aws:
-  region: ${AWS_REGION:us-east-1}
+  region: ${AWS_REGION:ap-south-1}
   access-key: ${AWS_ACCESS_KEY:}
   secret-key: ${AWS_SECRET_KEY:}
   s3:
-    bucket-name: ${AWS_BUCKET_NAME:cloudvault-dev}
+    bucket-name: ${AWS_BUCKET_NAME:cloudvault-dev-files}
     presigned-url-expiry-minutes: 15
 
 # ===== SpringDoc / Swagger UI =====

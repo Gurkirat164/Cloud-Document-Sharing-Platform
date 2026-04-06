@@ -33,6 +33,19 @@
         <flyway.version>10.10.0</flyway.version>
     </properties>
 
+    <!-- ===== Dependency Management — AWS SDK v2 BOM ===== -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <!-- ===== Dependencies ===== -->
     <dependencies>
 
@@ -96,16 +109,14 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- AWS SDK v2 -->
+        <!-- AWS SDK v2 — versions managed by the BOM in <dependencyManagement> -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
-            <version>${awssdk.version}</version>
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>sts</artifactId>
-            <version>${awssdk.version}</version>
         </dependency>
 
         <!-- Springdoc OpenAPI / Swagger UI -->
