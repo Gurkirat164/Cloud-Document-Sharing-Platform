@@ -1,0 +1,72 @@
+# ===== Spring Boot Base Configuration =====
+spring:
+  application:
+    name: cloudvault
+
+  profiles:
+    active: dev   # Override via SPRING_PROFILES_ACTIVE env var in prod
+
+  # --- DataSource ---
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/cloudvault?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:cloudvault}
+    password: ${DB_PASSWORD:secret}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # --- JPA / Hibernate ---
+  jpa:
+    hibernate:
+      ddl-auto: validate   # Flyway owns schema; Hibernate only validates
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+  # --- Flyway ---
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # --- Jackson ---
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+
+# ===== Server =====
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+# ===== Security / JWT =====
+jwt:
+  secret: ${JWT_SECRET:change-me-in-production-use-a-long-random-string-256bit}
+  expiry-ms: ${JWT_EXPIRY_MS:900000}           # 15 minutes
+  refresh-expiry-ms: ${JWT_REFRESH_EXPIRY_MS:604800000}  # 7 days
+
+# ===== AWS =====
+aws:
+  region: ${AWS_REGION:us-east-1}
+  access-key: ${AWS_ACCESS_KEY:}
+  secret-key: ${AWS_SECRET_KEY:}
+  s3:
+    bucket-name: ${AWS_BUCKET_NAME:cloudvault-dev}
+    presigned-url-expiry-minutes: 15
+
+# ===== SpringDoc / Swagger UI =====
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+# ===== Logging (base) =====
+logging:
+  level:
+    root: INFO
+    com.cloudvault: DEBUG

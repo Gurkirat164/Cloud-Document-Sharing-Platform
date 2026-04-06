@@ -1,0 +1,35 @@
+# ===== Development Profile =====
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/cloudvault_dev?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: root
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # H2 console (useful for quick local testing alongside MySQL — enable if switching to H2)
+  h2:
+    console:
+      enabled: false          # Set to true only when datasource is switched to H2
+
+  flyway:
+    enabled: true
+    clean-on-validation-error: true   # Handy during local schema iteration — NEVER in prod
+
+# LocalStack endpoint override (comment out when using real AWS credentials locally)
+aws:
+  s3:
+    endpoint-override: http://localhost:4566
+
+# ===== Logging (verbose for dev) =====
+logging:
+  level:
+    root: DEBUG
+    com.cloudvault: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE

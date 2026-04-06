@@ -1,0 +1,15 @@
+package com.cloudvault.domain.enums;
+
+// Audit event types recorded in activity_logs: FILE_UPLOAD, FILE_DOWNLOAD, FILE_DELETE, FILE_RENAME, FILE_SHARE, PERMISSION_GRANT, PERMISSION_REVOKE, USER_LOGIN, USER_LOGOUT, USER_REGISTER.
+public enum EventType {
+    FILE_UPLOAD,
+    FILE_DOWNLOAD,
+    FILE_DELETE,
+    FILE_RENAME,
+    FILE_SHARE,
+    PERMISSION_GRANT,
+    PERMISSION_REVOKE,
+    USER_LOGIN,
+    USER_LOGOUT,
+    USER_REGISTER
+}

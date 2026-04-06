@@ -1,0 +1,42 @@
+# ===== Production Profile =====
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    clean-disabled: true   # Safety guard: never wipe the prod schema
+
+# AWS — all values injected from environment / secrets manager
+aws:
+  region: ${AWS_REGION}
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  s3:
+    bucket-name: ${AWS_BUCKET_NAME}
+
+# JWT
+jwt:
+  secret: ${JWT_SECRET}
+  expiry-ms: ${JWT_EXPIRY_MS}
+  refresh-expiry-ms: ${JWT_REFRESH_EXPIRY_MS}
+
+# Server hardening
+server:
+  error:
+    include-message: never
+    include-stacktrace: never
+
+# ===== Logging (minimal in prod) =====
+logging:
+  level:
+    root: WARN
+    com.cloudvault: WARN
