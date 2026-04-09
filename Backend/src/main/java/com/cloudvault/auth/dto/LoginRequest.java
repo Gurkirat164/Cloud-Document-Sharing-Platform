@@ -1,5 +1,19 @@
 package com.cloudvault.auth.dto;
 
-// DTO carrying login credentials: email and password.
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+
+/**
+ * Payload for POST /auth/login.
+ */
+@Getter
 public class LoginRequest {
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Must be a valid email address")
+    private String email;
+
+    @NotBlank(message = "Password is required")
+    private String password;
 }

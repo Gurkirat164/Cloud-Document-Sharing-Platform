@@ -6,6 +6,12 @@ spring:
   profiles:
     active: dev   # Override via SPRING_PROFILES_ACTIVE env var in prod
 
+  # --- Disable Spring Boot's auto-generated in-memory user ---
+  security:
+    user:
+      name: disabled
+      password: disabled
+
   # --- DataSource ---
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/cloudvault?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}

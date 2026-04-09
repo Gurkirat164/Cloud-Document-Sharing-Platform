@@ -1,5 +1,24 @@
 package com.cloudvault.user.repository;
 
-// Spring Data JPA repository for User entities; supports lookup by email and UUID.
-public interface UserRepository {
+import com.cloudvault.domain.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+/**
+ * Spring Data repository for the User entity.
+ */
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByEmail(String email);
+
+    Optional<User> findByUuid(String uuid);
+
+    boolean existsByEmail(String email);
+
+    Page<User> findAllByIsActiveTrue(Pageable pageable);
 }

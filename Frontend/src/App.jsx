@@ -1,29 +1,53 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import LoginPage from './pages/login/LoginPage'
-import RegisterPage from './pages/register/RegisterPage'
-import DashboardPage from './pages/dashboard/DashboardPage'
-import FilesPage from './pages/files/FilesPage'
-import SharedPage from './pages/shared/SharedPage'
-import ActivityPage from './pages/activity/ActivityPage'
-import ProfilePage from './pages/profile/ProfilePage'
-import { useAuth } from './context/AuthContext'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import UnauthorizedPage from './pages/UnauthorizedPage';
 
-function PrivateRoute({ children }) {
-  const { isAuthenticated } = useAuth()
-  return isAuthenticated ? children : <Navigate to="/login" replace />
-}
+const DashboardPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Dashboard</h1>;
+const AdminPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Admin Panel</h1>;
+const NotFoundPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>404 Not Found</h1>;
 
-export default function App() {
+const App = () => {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-      <Route path="/files" element={<PrivateRoute><FilesPage /></PrivateRoute>} />
-      <Route path="/shared" element={<PrivateRoute><SharedPage /></PrivateRoute>} />
-      <Route path="/activity" element={<PrivateRoute><ActivityPage /></PrivateRoute>} />
-      <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  )
-}
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          
+          <Route path="/login" element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          } />
+          
+          <Route path="/register" element={
+            <PublicRoute>
+              <RegisterPage />
+            </PublicRoute>
+          } />
+          
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          
+          <Route path="/admin/*" element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <AdminPage />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+};
+
+export default App;

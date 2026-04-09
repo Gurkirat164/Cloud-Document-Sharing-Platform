@@ -1,7 +1,11 @@
-import apiClient from './apiClient'
+import axiosInstance from './axiosInstance';
 
-// User API calls: get own profile, update profile fields.
-export const userApi = {
-  getProfile: () => apiClient.get('/users/me'),
-  updateProfile: (data) => apiClient.patch('/users/me', data),
-}
+export const getMyProfile = async () => {
+  const response = await axiosInstance.get('/api/users/me');
+  return response.data;
+};
+
+export const updateMyProfile = async (fullName) => {
+  const response = await axiosInstance.put('/api/users/me', { fullName });
+  return response.data;
+};

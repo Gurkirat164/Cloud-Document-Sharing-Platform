@@ -1,9 +1,21 @@
-import apiClient from './apiClient'
+import axiosInstance from './axiosInstance';
 
-// Auth API calls: register, login, refresh token, logout.
-export const authApi = {
-  register: (data) => apiClient.post('/auth/register', data),
-  login: (data) => apiClient.post('/auth/login', data),
-  refresh: (refreshToken) => apiClient.post('/auth/refresh', { refreshToken }),
-  logout: () => apiClient.post('/auth/logout'),
-}
+export const register = async (fullName, email, password) => {
+  const response = await axiosInstance.post('/auth/register', { fullName, email, password });
+  return response.data;
+};
+
+export const login = async (email, password) => {
+  const response = await axiosInstance.post('/auth/login', { email, password });
+  return response.data;
+};
+
+export const refresh = async (refreshToken) => {
+  const response = await axiosInstance.post('/auth/refresh', { refreshToken });
+  return response.data;
+};
+
+export const logout = async (refreshToken) => {
+  const response = await axiosInstance.post('/auth/logout', { refreshToken });
+  return response.data;
+};
