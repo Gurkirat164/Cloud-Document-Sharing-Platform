@@ -1,5 +1,12 @@
 package com.cloudvault.file.dto;
 
-// Response DTO containing a time-limited pre-signed S3 URL (for upload or download) and its expiry timestamp.
-public class PresignedUrlResponse {
-}
+/**
+ * Response returned when the client requests a presigned PUT URL.
+ * The frontend uses {@code presignedUrl} to PUT the file directly to S3,
+ * then sends {@code s3Key} back in the metadata save request.
+ */
+public record PresignedUrlResponse(
+        String presignedUrl,
+        String s3Key,
+        long expiresInSeconds
+) {}

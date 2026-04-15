@@ -5,8 +5,8 @@ import PublicRoute from './components/PublicRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import DashboardPage from './pages/DashboardPage';
 
-const DashboardPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Dashboard</h1>;
 const AdminPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Admin Panel</h1>;
 const NotFoundPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>404 Not Found</h1>;
 

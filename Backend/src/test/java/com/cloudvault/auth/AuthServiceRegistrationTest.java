@@ -1,3 +1,4 @@
+
 package com.cloudvault.auth;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,7 +16,6 @@ import com.cloudvault.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,12 +36,11 @@ class AuthServiceRegistrationTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
-    @InjectMocks
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(authService, "refreshExpiryMs", 86400000L);
+        authService = new AuthService(userRepository, refreshTokenRepository, jwtTokenProvider, passwordEncoder, 86400000L);
     }
 
     private RegisterRequest createValidRequest() {

@@ -1,9 +1,9 @@
 # ===== Development Profile =====
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/cloudvault_dev?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password: root
+    url: jdbc:mysql://localhost:3307/cloudvault?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: cloudvault
+    password: secret
 
   jpa:
     show-sql: true
@@ -26,6 +26,8 @@ spring:
 
 # LocalStack endpoint override (comment out when using real AWS credentials locally)
 aws:
+  access-key: test
+  secret-key: test
   s3:
     endpoint-override: http://localhost:4566
 

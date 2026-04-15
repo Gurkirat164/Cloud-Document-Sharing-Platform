@@ -30,7 +30,7 @@ public class User implements UserDetails {
     @Column(name = "id", nullable = false, updatable = false)
     private Long id;
 
-    @Column(name = "uuid", nullable = false, updatable = false, length = 36, unique = true)
+    @Column(name = "uuid", nullable = false, updatable = false, columnDefinition = "CHAR(36)", unique = true)
     private String uuid;
 
     @Column(name = "email", nullable = false, unique = true, length = 255)

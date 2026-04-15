@@ -13,15 +13,15 @@
 -- =============================================================
 INSERT INTO users (uuid, email, password_hash, full_name, role, storage_quota) VALUES
     (UUID(), 'admin@cloudvault.dev',
-     '$2a$10$PLACEHOLDER_HASH_FOR_DEV_ONLY',
+     '$2a$12$LfPMgR5.tHAVAI8eJzHL0OInDKocn2iAnV.dRDUK.0ni4f6E8Pola',
      'CloudVault Admin', 'ADMIN', 107374182400),     -- 100 GB quota for admin
 
     (UUID(), 'alice@cloudvault.dev',
-     '$2a$10$PLACEHOLDER_HASH_FOR_DEV_ONLY',
+     '$2a$12$LfPMgR5.tHAVAI8eJzHL0OInDKocn2iAnV.dRDUK.0ni4f6E8Pola',
      'Alice Wonderland', 'USER', 5368709120),         -- 5 GB default quota
 
     (UUID(), 'bob@cloudvault.dev',
-     '$2a$10$PLACEHOLDER_HASH_FOR_DEV_ONLY',
+     '$2a$12$LfPMgR5.tHAVAI8eJzHL0OInDKocn2iAnV.dRDUK.0ni4f6E8Pola',
      'Bob Builder', 'USER', 5368709120);
 
 
@@ -35,7 +35,7 @@ INSERT INTO files (uuid, owner_id, original_name, s3_key, s3_bucket, mime_type, 
      'cloudvault-prod-files',
      'application/pdf',
      2097152,                                         -- 2 MB
-     'a3f1c29e4b87d6e501f234c891ab7d2e4f6789012345678901234567890abcdef'),
+     'a3f1c29e4b87d6e501f234c891ab7d2e4f6789012345678901234567890abcde'),
 
     (UUID(), 2,
      'Profile_Photo.png',
