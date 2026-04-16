@@ -91,6 +91,27 @@ public class S3Service {
     }
 
     /**
+     * Generates a presigned GET URL for time-limited download access with a custom filename mapping.
+     */
+    public String generatePresignedGetUrl(String s3Key, String originalFileName, long durationMinutes) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(s3Key)
+                .responseContentDisposition("attachment; filename=\"" + originalFileName + "\"")
+                .build();
+
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(durationMinutes))
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
+
+        log.debug("Generated presigned GET URL for key: {} with custom filename", s3Key);
+        return presignedRequest.url().toString();
+    }
+
+    /**
      * Hard-deletes an object from S3. Should only be called by cleanup jobs or admin
      * operations — not triggered directly from a soft-delete API call.
      *

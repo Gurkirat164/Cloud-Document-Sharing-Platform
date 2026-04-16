@@ -1,5 +1,16 @@
 package com.cloudvault.activity.dto;
 
-// DTO for filtering activity log queries: eventType, fileId, startDate, endDate, page, size.
-public class ActivityLogFilterRequest {
-}
+import com.cloudvault.domain.enums.EventType;
+
+import java.time.Instant;
+
+/**
+ * Query parameters for filtering activity log results.
+ * All fields are optional — omitted fields apply no filter.
+ */
+public record ActivityLogFilterRequest(
+        EventType eventType,
+        String fileUuid,
+        Instant from,
+        Instant to
+) {}

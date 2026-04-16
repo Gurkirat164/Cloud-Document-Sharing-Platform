@@ -1,5 +1,17 @@
 package com.cloudvault.access.dto;
 
-// Request DTO for creating a share link: fileId, sharePermission (VIEW/EDIT), optional expiresAt and passwordHash.
+import com.cloudvault.domain.enums.SharePermission;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.UUID;
+
+@Getter
+@Setter
 public class CreateShareLinkRequest {
+    private UUID fileUuid;
+    private SharePermission permission;
+    private Integer expirationHours;
+    private String password;
+    private Integer maxUses;
 }

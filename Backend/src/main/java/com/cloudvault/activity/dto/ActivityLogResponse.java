@@ -1,5 +1,18 @@
 package com.cloudvault.activity.dto;
 
-// Response DTO for a single activity log entry: id, eventType, actorId, fileId, ipAddress, createdAt.
-public class ActivityLogResponse {
-}
+import com.cloudvault.domain.enums.EventType;
+
+import java.time.Instant;
+
+/**
+ * Response DTO for a single activity log entry.
+ */
+public record ActivityLogResponse(
+        Long id,
+        EventType eventType,
+        String actorEmail,
+        String fileUuid,
+        String fileName,
+        String ipAddress,
+        Instant createdAt
+) {}

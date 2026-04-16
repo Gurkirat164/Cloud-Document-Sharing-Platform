@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { uploadFile, listFiles, deleteFile } from '../api/fileApi';
 import useAuth from '../hooks/useAuth';
+import ShareModal from '../components/sharing/ShareModal';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -338,7 +339,7 @@ const UploadItem = ({ id, name, size, progress, status, error, onRetry, file }) 
 
 // ─── FileCard Component ───────────────────────────────────────────────────────
 
-const FileCard = ({ file, onDelete, thumbnails }) => {
+const FileCard = ({ file, onDelete, onShare, thumbnails }) => {
   const [deleting, setDeleting] = useState(false);
   const { icon, color } = getFileIconMeta(file.mimeType);
   const thumbUrl = thumbnails[file.uuid];
@@ -388,6 +389,19 @@ const FileCard = ({ file, onDelete, thumbnails }) => {
       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
         <button
           className="cv-delete-btn"
+          onClick={() => onShare(file)}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(99,102,241,0.4)',
+            color: '#818cf8',
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          🔗 Share
+        </button>
+        <button
+          className="cv-delete-btn"
           onClick={handleDelete}
           disabled={deleting}
           aria-label={`Delete ${file.originalName}`}
@@ -434,6 +448,7 @@ const DashboardPage = () => {
   const { user, logout } = useAuth();
 
   // State
+  const [selectedFile, setSelectedFile] = useState(null);
   const [files, setFiles] = useState([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [uploads, setUploads] = useState([]);
@@ -796,12 +811,17 @@ const DashboardPage = () => {
                   key={file.uuid}
                   file={file}
                   onDelete={handleDelete}
+                  onShare={setSelectedFile}
                   thumbnails={thumbnails}
                 />
               ))}
             </div>
           )}
         </div>
+        
+        {selectedFile && (
+          <ShareModal file={selectedFile} onClose={() => setSelectedFile(null)} />
+        )}
       </main>
     </div>
   );

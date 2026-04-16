@@ -63,7 +63,8 @@ public class SecurityConfig {
                             "/swagger-ui/**",
                             "/swagger-ui.html",
                             "/v3/api-docs/**",
-                            "/api-docs/**"
+                            "/api-docs/**",
+                            "/api/share-links/*/resolve"  // public share link resolution
                     ).permitAll()
 
                     // ── Admin-only routes (filter-chain level) ───────────────────
