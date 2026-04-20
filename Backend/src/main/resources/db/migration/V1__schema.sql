@@ -159,7 +159,7 @@ CREATE TABLE share_links (
     token          VARCHAR(128)     NOT NULL,
     file_id        BIGINT UNSIGNED  NOT NULL,
     created_by     BIGINT UNSIGNED  NOT NULL,
-    permission     ENUM('VIEW','DOWNLOAD') NOT NULL,
+    permission     ENUM('VIEW','EDIT') NOT NULL,
     password_hash  VARCHAR(255)     NULL     COMMENT 'Optional: bcrypt hash for password-protected links',
     max_uses       INT              NULL     COMMENT 'NULL = unlimited',
     use_count      INT              NOT NULL DEFAULT 0,

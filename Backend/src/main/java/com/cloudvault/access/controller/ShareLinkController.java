@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 public class ShareLinkController {
@@ -27,6 +29,16 @@ public class ShareLinkController {
         
         ShareLinkResponse response = shareLinkService.createShareLink(fileUuid, request, currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/api/files/{fileUuid}/share-links")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<ShareLinkResponse>>> getShareLinks(
+            @PathVariable String fileUuid,
+            @CurrentUser User currentUser) {
+
+        List<ShareLinkResponse> response = shareLinkService.getShareLinks(fileUuid, currentUser);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     // PermitAll in SecurityConfig is required for this endpoint to work without authentication.

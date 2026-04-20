@@ -49,25 +49,30 @@ public class ActivityLogService {
     private final FileRepository        fileRepository;
     private final HttpServletRequest    httpServletRequest;
 
-    public ActivityLogService(ActivityLogRepository activityLogRepository,
-                               HttpServletRequest httpServletRequest) {
-        this.activityLogRepository = activityLogRepository;
-        // FileRepository is NOT injected here — kept for read-path calls below.
-        // It is passed in through the overloaded constructor used by the service.
-        this.fileRepository        = null; // set by the full constructor
-        this.httpServletRequest    = httpServletRequest;
+    /**
+     * Protected no-args constructor for Spring/CGLIB proxying.
+     */
+    protected ActivityLogService() {
+        this.activityLogRepository = null;
+        this.fileRepository        = null;
+        this.httpServletRequest    = null;
     }
 
-    /**
-     * Full constructor used when both read-path (with file ownership checks)
-     * and write-path capabilities are needed.
-     */
+    @org.springframework.beans.factory.annotation.Autowired
     public ActivityLogService(ActivityLogRepository activityLogRepository,
                                FileRepository fileRepository,
                                HttpServletRequest httpServletRequest) {
         this.activityLogRepository = activityLogRepository;
         this.fileRepository        = fileRepository;
         this.httpServletRequest    = httpServletRequest;
+    }
+
+    /**
+     * Overloaded constructor for compatibility (e.g. tests).
+     */
+    public ActivityLogService(ActivityLogRepository activityLogRepository,
+                               HttpServletRequest httpServletRequest) {
+        this(activityLogRepository, null, httpServletRequest);
     }
 
     // ── Write path ───────────────────────────────────────────────────────────

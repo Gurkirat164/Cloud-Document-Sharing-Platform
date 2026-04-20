@@ -123,6 +123,7 @@ public class PermissionService {
         return filePermissionRepository.findAllByGranteeId(currentUser.getId())
                 .stream()
                 .filter(FilePermission::isValid)
+                .filter(permission -> permission.getFile() != null && !Boolean.TRUE.equals(permission.getFile().getIsDeleted()))
                 .map(PermissionResponse::from)
                 .collect(Collectors.toList());
     }

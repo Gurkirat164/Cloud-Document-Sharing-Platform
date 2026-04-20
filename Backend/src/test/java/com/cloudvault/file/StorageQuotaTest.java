@@ -4,6 +4,8 @@ import com.cloudvault.common.exception.StorageQuotaExceededException;
 import com.cloudvault.domain.File;
 import com.cloudvault.domain.User;
 import com.cloudvault.domain.enums.Role;
+import com.cloudvault.access.service.AccessManagementService;
+import com.cloudvault.access.service.PermissionService;
 import com.cloudvault.file.dto.FileMetadataRequest;
 import com.cloudvault.file.dto.FileResponse;
 import com.cloudvault.file.dto.FileSearchRequest;
@@ -38,6 +40,9 @@ class StorageQuotaTest {
     @Mock private FileRepository fileRepository;
     @Mock private UserRepository userRepository;
     @Mock private S3Service      s3Service;
+    @Mock private com.cloudvault.file.service.FileVersionService fileVersionService;
+    @Mock private PermissionService permissionService;
+    @Mock private AccessManagementService accessManagementService;
 
     private FileService fileService;
 
@@ -74,7 +79,7 @@ class StorageQuotaTest {
 
     @BeforeEach
     void setUp() {
-        fileService = new FileService(s3Service, fileRepository, userRepository);
+        fileService = new FileService(s3Service, fileRepository, userRepository, fileVersionService, permissionService, accessManagementService);
         ReflectionTestUtils.setField(fileService, "bucketName", "cloudvault-test");
     }
 
@@ -222,12 +227,12 @@ class StorageQuotaTest {
     @Test
     @DisplayName("formatBytes: correctly formats B, KB, MB, GB boundaries")
     void formatBytes_correctlyFormatsAllBoundaries() {
-        assertThat(FileService.formatBytes(0L))               .isEqualTo("0 B");
-        assertThat(FileService.formatBytes(512L))             .isEqualTo("512 B");
-        assertThat(FileService.formatBytes(1_024L))           .isEqualTo("1.0 KB");
-        assertThat(FileService.formatBytes(1_048_576L))       .isEqualTo("1.0 MB");
-        assertThat(FileService.formatBytes(2_621_440L))       .isEqualTo("2.5 MB");
-        assertThat(FileService.formatBytes(1_073_741_824L))   .isEqualTo("1.0 GB");
-        assertThat(FileService.formatBytes(5_368_709_120L))   .isEqualTo("5.0 GB");
+        assertThat(FileResponse.formatBytes(0L))               .isEqualTo("0 B");
+        assertThat(FileResponse.formatBytes(512L))             .isEqualTo("512 B");
+        assertThat(FileResponse.formatBytes(1_024L))           .isEqualTo("1.0 KB");
+        assertThat(FileResponse.formatBytes(1_048_576L))       .isEqualTo("1.0 MB");
+        assertThat(FileResponse.formatBytes(2_621_440L))       .isEqualTo("2.5 MB");
+        assertThat(FileResponse.formatBytes(1_073_741_824L))   .isEqualTo("1.0 GB");
+        assertThat(FileResponse.formatBytes(5_368_709_120L))   .isEqualTo("5.0 GB");
     }
 }

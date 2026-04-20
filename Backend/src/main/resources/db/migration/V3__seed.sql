@@ -64,7 +64,7 @@ INSERT INTO file_permissions (file_id, grantee_id, permission, granted_by, expir
 --   Max 10 uses, expires in 7 days, no password protection
 -- =============================================================
 INSERT INTO share_links (token, file_id, created_by, permission, max_uses, expires_at) VALUES
-    (UUID(), 2, 2, 'DOWNLOAD', 10, DATE_ADD(NOW(), INTERVAL 7 DAY));
+    (UUID(), 2, 2, 'VIEW', 10, DATE_ADD(NOW(), INTERVAL 7 DAY));
 
 
 -- =============================================================

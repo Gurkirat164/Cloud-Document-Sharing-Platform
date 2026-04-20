@@ -99,6 +99,14 @@ export const deleteFile = async (uuid) => {
 };
 
 /**
+ * Request a short-lived presigned download URL for a file the current user can access.
+ */
+export const getDownloadUrl = async (uuid) => {
+  const response = await axiosInstance.get(`/api/files/${uuid}/download`);
+  return response.data?.data;
+};
+
+/**
  * Fetch storage usage stats for the authenticated user.
  * Returns { totalFiles, storageUsed, storageQuota, storageUsedPercent, storageUsedFormatted }
  */

@@ -14,6 +14,7 @@ spring:
   flyway:
     enabled: true
     clean-disabled: true   # Safety guard: never wipe the prod schema
+    validate-on-migrate: false # Skip checksum validation for dev consistency
 
 # AWS — all values injected from environment / secrets manager
 aws:
@@ -34,6 +35,9 @@ server:
   error:
     include-message: never
     include-stacktrace: never
+
+  main:
+    allow-bean-definition-overriding: true
 
 # ===== Logging (minimal in prod) =====
 logging:

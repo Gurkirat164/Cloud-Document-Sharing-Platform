@@ -1,6 +1,7 @@
 package com.cloudvault.file.service;
 
 import com.cloudvault.activity.annotation.LogActivity;
+import com.cloudvault.access.service.AccessManagementService;
 import com.cloudvault.common.exception.AccessDeniedException;
 import com.cloudvault.common.exception.ResourceNotFoundException;
 import com.cloudvault.common.exception.StorageQuotaExceededException;
@@ -9,6 +10,8 @@ import com.cloudvault.domain.File;
 import com.cloudvault.domain.User;
 import com.cloudvault.domain.enums.EventType;
 import com.cloudvault.domain.enums.Role;
+import com.cloudvault.domain.enums.Permission;
+import com.cloudvault.access.service.PermissionService;
 import com.cloudvault.file.dto.FileMetadataRequest;
 import com.cloudvault.file.dto.FileResponse;
 import com.cloudvault.file.dto.FileSearchRequest;
@@ -52,6 +55,11 @@ public class FileService {
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
     private final FileVersionService fileVersionService;
+    private final PermissionService permissionService;
+    private final AccessManagementService accessManagementService;
+
+    @Value("${aws.s3.presigned-url-expiry-minutes:15}")
+    private long presignedUrlExpiryMinutes;
 
     @Value("${aws.s3.bucket-name}")
     private String bucketName;
@@ -161,6 +169,31 @@ public class FileService {
                 .map(FileResponse::from);
     }
 
+        /**
+         * Creates a presigned GET URL for downloading a file the caller can access.
+         * Owners and admins may always download. Shared users need an active VIEW or EDIT permission.
+         */
+        @Transactional(readOnly = true)
+        public String getDownloadUrl(String fileUuid, User currentUser) {
+        File file = fileRepository.findByUuidAndIsDeletedFalse(fileUuid)
+            .orElseThrow(() -> new ResourceNotFoundException("File not found: " + fileUuid));
+
+        boolean isOwner = file.getOwner().getId().equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+        boolean hasPermission = isOwner || isAdmin || permissionService.checkUserHasPermission(
+            file.getId(), currentUser.getId(), Permission.VIEW);
+
+        if (!hasPermission) {
+            throw new AccessDeniedException("You do not have access to download this file");
+        }
+
+        return s3Service.generatePresignedGetUrl(
+            file.getS3Key(),
+            file.getOriginalName(),
+            presignedUrlExpiryMinutes
+        );
+        }
+
     /**
      * Soft-deletes the DB record, decrements the owner's storage counter, and
      * removes the S3 object.
@@ -201,9 +234,17 @@ public class FileService {
         //    so a rollback reverts both the soft-delete and the counter update atomically.
         decrementStorageUsed(user, file.getSizeBytes());
 
+        // 4. Best-effort revoke of all access records so deleted files disappear from
+        //    shared views and stale public links stop working.
+        try {
+            accessManagementService.revokeAllAccess(fileUuid, user);
+        } catch (Exception ex) {
+            log.warn("Failed to revoke external access for deleted file {}: {}", fileUuid, ex.getMessage());
+        }
+
         log.info("Soft-deleted file uuid={} s3Key={} owner={}", fileUuid, s3Key, user.getEmail());
 
-        // 4. Remove the S3 object — done after DB writes so a rollback never
+        // 5. Remove the S3 object — done after DB writes so a rollback never
         //    leaves a dangling DB row pointing at a deleted S3 object.
         //    S3 failure is non-fatal: the object becomes orphaned and will be
         //    swept by a scheduled cleanup job.

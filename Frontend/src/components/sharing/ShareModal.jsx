@@ -89,7 +89,7 @@ const ShareModal = ({ file, onClose }) => {
   };
 
   const handleCopyLink = (token) => {
-    const url = `${window.location.origin}/share/${token}`; // Assuming a future share route
+    const url = `${window.location.origin}/share/${token}`;
     navigator.clipboard.writeText(url).then(() => {
       alert('Link copied to clipboard!');
     });
@@ -158,6 +158,7 @@ const ShareModal = ({ file, onClose }) => {
             <div>
               {shareLinks.length === 0 ? (
                 <button 
+                  type="button"
                   className="share-btn-submit" 
                   onClick={handleCreateLink}
                   disabled={createLinkMutation.isPending}
@@ -179,6 +180,7 @@ const ShareModal = ({ file, onClose }) => {
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
+                          type="button"
                           className="revoke-btn" 
                           style={{ borderColor: '#d1d5db', color: '#374151' }}
                           onClick={() => handleCopyLink(link.token)}
@@ -186,6 +188,7 @@ const ShareModal = ({ file, onClose }) => {
                           Copy
                         </button>
                         <button 
+                          type="button"
                           className="revoke-btn" 
                           onClick={() => revokeLinkMutation.mutate(link.token)}
                         >
@@ -195,6 +198,7 @@ const ShareModal = ({ file, onClose }) => {
                     </div>
                   ))}
                   <button 
+                    type="button"
                     className="share-btn-submit" 
                     onClick={handleCreateLink}
                     disabled={createLinkMutation.isPending}

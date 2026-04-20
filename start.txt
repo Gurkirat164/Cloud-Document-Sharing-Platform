@@ -1,0 +1,32 @@
+# Starting CloudVault (Production Mode)
+
+To start the CloudVault platform in production mode, follow these steps:
+
+## Prerequisite
+Start the MySQL Database container using Docker Compose:
+```bash
+cd Backend
+docker compose up -d mysql
+```
+*Note: Make sure Docker Desktop is running and unpaused.*
+
+## 1. Start the Backend (Production Profile)
+```bash
+cd Backend
+# Option 1: Run with Docker (Recommended)
+docker compose up -d app
+
+# Option 2: Run directly with Maven
+# First, ensure your .env variables are set, then:
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
+```
+
+## 2. Start the Frontend (Production Preview)
+```bash
+cd Frontend
+npm ci
+npm run build
+npm run preview
+```
+
+Once running, the application will be accessible via browser at http://localhost:4173/.

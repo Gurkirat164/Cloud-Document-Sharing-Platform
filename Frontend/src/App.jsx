@@ -7,6 +7,8 @@ import RegisterPage from './pages/RegisterPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import DashboardPage from './pages/DashboardPage';
 import ActivityDashboardPage from './pages/ActivityDashboardPage';
+import PublicSharePage from './pages/PublicSharePage';
+import SharedPage from './pages/shared/SharedPage';
 
 const AdminPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Admin Panel</h1>;
 const NotFoundPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>404 Not Found</h1>;
@@ -39,6 +41,14 @@ const App = () => {
           <Route path="/activity" element={
             <ProtectedRoute>
               <ActivityDashboardPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/share/:token" element={<PublicSharePage />} />
+
+          <Route path="/shared" element={
+            <ProtectedRoute>
+              <SharedPage />
             </ProtectedRoute>
           } />
           

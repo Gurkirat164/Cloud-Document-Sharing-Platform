@@ -21,12 +21,14 @@ public class ShareLinkResponse {
 
     public static ShareLinkResponse from(ShareLink sl) {
         if (sl == null) return null;
+
+        SharePermission permission = sl.getPermission() != null ? sl.getPermission().normalized() : null;
         
         return ShareLinkResponse.builder()
                 .token(sl.getToken())
                 .fileUuid(sl.getFile() != null ? sl.getFile().getUuid() : null)
                 .fileName(sl.getFile() != null ? sl.getFile().getOriginalName() : null)
-                .permission(sl.getPermission())
+            .permission(permission)
                 .expiresAt(sl.getExpiresAt())
                 .maxUses(sl.getMaxUses())
                 .useCount(sl.getUseCount())

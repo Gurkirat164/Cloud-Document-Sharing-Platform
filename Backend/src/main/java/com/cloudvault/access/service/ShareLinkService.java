@@ -9,16 +9,19 @@ import com.cloudvault.common.util.UuidUtils;
 import com.cloudvault.domain.File;
 import com.cloudvault.domain.ShareLink;
 import com.cloudvault.domain.User;
+import com.cloudvault.domain.enums.SharePermission;
 import com.cloudvault.file.repository.FileRepository;
 import com.cloudvault.file.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -62,10 +65,35 @@ public class ShareLinkService {
                 .isActive(true)
                 .build();
 
-        ShareLink savedLink = shareLinkRepository.save(shareLink);
+        ShareLink savedLink;
+        try {
+            savedLink = shareLinkRepository.save(shareLink);
+        } catch (DataIntegrityViolationException ex) {
+            if (request.getPermission() == SharePermission.VIEW) {
+                shareLink.setPermission(SharePermission.DOWNLOAD);
+                savedLink = shareLinkRepository.save(shareLink);
+            } else {
+                throw ex;
+            }
+        }
         log.info("Share link created for file {} by {}", fileUuid, currentUser.getEmail());
         
         return ShareLinkResponse.from(savedLink);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ShareLinkResponse> getShareLinks(String fileUuid, User currentUser) {
+        File file = fileRepository.findByUuid(fileUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+
+        if (!file.getOwner().getId().equals(currentUser.getId())) {
+            throw new AccessDeniedException("Only the file owner can view share links");
+        }
+
+        return shareLinkRepository.findAllByFileId(file.getId())
+                .stream()
+                .map(ShareLinkResponse::from)
+                .toList();
     }
 
     public String accessShareLink(String token, String providedPassword) {

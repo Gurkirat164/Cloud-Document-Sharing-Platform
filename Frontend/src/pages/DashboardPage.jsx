@@ -1,13 +1,13 @@
 import { useState, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import {
-  uploadFile,
   getPresignedUploadUrl,
   uploadFileToS3,
   saveFileMetadata,
   listFiles,
   deleteFile as deleteFileApi,
+  getDownloadUrl,
   getFileStats,
   getRecentFiles,
 } from '../api/fileApi';
@@ -348,7 +348,7 @@ const UploadItem = ({ id, name, size, progress, status, error, onRetry, file }) 
 
 // ─── FileCard ─────────────────────────────────────────────────────────────────
 
-const FileCard = ({ file, onDelete, onShare }) => {
+const FileCard = ({ file, onDelete, onShare, onDownload }) => {
   const [deleting, setDeleting] = useState(false);
   const { icon, color } = getFileIconMeta(file.mimeType);
 
@@ -388,6 +388,15 @@ const FileCard = ({ file, onDelete, onShare }) => {
       </div>
 
       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+        <button
+          className="cv-delete-btn"
+          onClick={() => onDownload(file)}
+          style={{ background: 'transparent', border: '1px solid rgba(34,197,94,0.35)', color: '#4ade80' }}
+          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.12)'; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          ⬇ Download
+        </button>
         <button
           className="cv-delete-btn"
           onClick={() => onShare(file)}
@@ -443,6 +452,7 @@ const ValidationBanner = ({ errors, onDismiss }) => (
 
 const DashboardPage = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   // ── State ────────────────────────────────────────────────────────────────
@@ -513,6 +523,18 @@ const DashboardPage = () => {
   const handleDelete = async (uuid) => {
     await deleteMutation.mutateAsync(uuid);
   };
+
+  const handleDownload = useCallback(async (file) => {
+    try {
+      const downloadUrl = await getDownloadUrl(file.uuid);
+      window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      setGlobalAlert({
+        type: 'error',
+        message: err.response?.data?.message || err.message || 'Download failed. Please try again.',
+      });
+    }
+  }, []);
 
   // ── Upload flow ──────────────────────────────────────────────────────────
 
@@ -615,7 +637,6 @@ const DashboardPage = () => {
         }
       })();
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageUsed, storageQuota, queryClient]);
 
   const handleRetry = useCallback(
@@ -683,6 +704,12 @@ const DashboardPage = () => {
             style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '12.5px', fontFamily: 'Inter,sans-serif', fontWeight: 600 }}
           >
             Sign out
+          </button>
+          <button
+            onClick={() => navigate('/shared')}
+            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.25)', color: '#c7d2fe', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '12.5px', fontFamily: 'Inter,sans-serif', fontWeight: 600 }}
+          >
+            Shared with me
           </button>
         </div>
       </header>
@@ -839,7 +866,7 @@ const DashboardPage = () => {
             </h2>
             <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
               {recentFiles.map((f) => {
-                const { icon, color } = getFileIconMeta(f.mimeType);
+                const { icon } = getFileIconMeta(f.mimeType);
                 return (
                   <div
                     key={f.uuid}
@@ -916,6 +943,7 @@ const DashboardPage = () => {
                   file={file}
                   onDelete={handleDelete}
                   onShare={setSelectedFile}
+                  onDownload={handleDownload}
                 />
               ))}
             </div>

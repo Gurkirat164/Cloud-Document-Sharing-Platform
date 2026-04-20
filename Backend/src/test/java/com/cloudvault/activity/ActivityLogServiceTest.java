@@ -311,17 +311,9 @@ class ActivityLogServiceTest {
         File file = buildFile(user);
 
         // The aspect resolves the file entity via the UUID in the FileResponse.
-        when(fileRepository.findByUuid(file.getUuid())).thenReturn(Optional.of(file));
+        lenient().when(fileRepository.findByUuid(file.getUuid())).thenReturn(Optional.of(file));
 
-        FileResponse fileResponse = new FileResponse(
-                file.getUuid(),
-                file.getOriginalName(),
-                "application/pdf",
-                file.getSizeBytes(),
-                file.getS3Key(),
-                user.getEmail(),
-                Instant.now()
-        );
+        FileResponse fileResponse = FileResponse.from(file);
 
         JoinPoint jp = mock(JoinPoint.class);
         // saveFileMetadata(FileMetadataRequest request, User user)

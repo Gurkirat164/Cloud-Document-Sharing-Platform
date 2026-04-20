@@ -1,5 +1,7 @@
 package com.cloudvault.file;
 
+import com.cloudvault.access.service.AccessManagementService;
+import com.cloudvault.access.service.PermissionService;
 import com.cloudvault.common.response.PagedResponse;
 import com.cloudvault.domain.File;
 import com.cloudvault.domain.User;
@@ -41,6 +43,9 @@ class FileSearchTest {
     @Mock private FileRepository fileRepository;
     @Mock private S3Service      s3Service;
     @Mock private UserRepository userRepository;
+    @Mock private com.cloudvault.file.service.FileVersionService fileVersionService;
+    @Mock private PermissionService permissionService;
+    @Mock private AccessManagementService accessManagementService;
 
     private FileService fileService;
 
@@ -76,7 +81,7 @@ class FileSearchTest {
 
     @BeforeEach
     void setUp() {
-        fileService = new FileService(s3Service, fileRepository, userRepository);
+        fileService = new FileService(s3Service, fileRepository, userRepository, fileVersionService, permissionService, accessManagementService);
         // Inject the bucket name value (normally injected by Spring @Value)
         ReflectionTestUtils.setField(fileService, "bucketName", "cloudvault-test");
     }

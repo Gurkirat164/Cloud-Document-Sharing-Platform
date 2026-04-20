@@ -25,6 +25,7 @@ public class CorsConfig {
                 "http://localhost:5173",   // Vite dev server
                 "http://localhost:3000",   // CRA / alternative dev
                 "http://127.0.0.1:5173",
+                "http://localhost:*",      // Covers preview ports like 4173, 4174
                 "https://*.cloudvault.io" // production wildcard
         ));
 

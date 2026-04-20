@@ -34,6 +34,7 @@ import java.util.Map;
  *   POST   /api/files                — save file metadata after S3 upload
  *   GET    /api/files                — list authenticated user's files
  *   DELETE /api/files/{uuid}         — soft-delete a file
+ *   GET    /api/files/{uuid}/download — generate a presigned download URL
  *   GET    /api/files/search         — search &amp; filter files
  *   GET    /api/files/recent         — 5 most recently uploaded files
  *   GET    /api/files/stats          — storage usage statistics
@@ -136,6 +137,27 @@ public class FileController {
 
         fileService.deleteFile(uuid, user);
         return ResponseEntity.ok(ApiResponse.success("File deleted successfully", null));
+    }
+
+    /**
+     * GET /api/files/{uuid}/download
+     *
+     * <p>Returns a short-lived presigned GET URL for a file the caller can access.
+     * The frontend can open this URL directly to trigger the browser download.
+     */
+    @GetMapping("/{uuid}/download")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+        summary = "Get presigned download URL",
+        description = "Generates a short-lived presigned GET URL for an accessible file. "
+                    + "Owners and admins may always download; shared users need an active permission."
+    )
+    public ResponseEntity<ApiResponse<String>> getDownloadUrl(
+            @PathVariable String uuid,
+            @CurrentUser User user) {
+
+        String downloadUrl = fileService.getDownloadUrl(uuid, user);
+        return ResponseEntity.ok(ApiResponse.success(downloadUrl));
     }
 
     // ── New endpoints ────────────────────────────────────────────────────────
