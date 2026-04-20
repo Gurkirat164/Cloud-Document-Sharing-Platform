@@ -1,0 +1,58 @@
+/* =====================================================================
+   EventBadge.css — pill badges for each activity event type
+   ===================================================================== */
+
+.event-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* ── Green — file upload ─────────────────────────────────────────── */
+.badge-upload {
+  background-color: rgba(0, 200, 120, 0.15);
+  color: #00c878;
+  border: 1px solid rgba(0, 200, 120, 0.35);
+}
+
+/* ── Blue — file download ────────────────────────────────────────── */
+.badge-download {
+  background-color: rgba(99, 179, 237, 0.15);
+  color: #63b3ed;
+  border: 1px solid rgba(99, 179, 237, 0.35);
+}
+
+/* ── Red — delete / revoke ───────────────────────────────────────── */
+.badge-delete {
+  background-color: rgba(255, 77, 109, 0.15);
+  color: #ff4d6d;
+  border: 1px solid rgba(255, 77, 109, 0.35);
+}
+
+/* ── Purple — share / grant ──────────────────────────────────────── */
+.badge-share {
+  background-color: rgba(159, 122, 234, 0.15);
+  color: #9f7aea;
+  border: 1px solid rgba(159, 122, 234, 0.35);
+}
+
+/* ── Yellow — login / logout / register / general access ─────────── */
+.badge-access {
+  background-color: rgba(246, 173, 85, 0.15);
+  color: #f6ad55;
+  border: 1px solid rgba(246, 173, 85, 0.35);
+}
+
+/* ── Rename — teal ───────────────────────────────────────────────── */
+.badge-rename {
+  background-color: rgba(0, 212, 170, 0.15);
+  color: #00d4aa;
+  border: 1px solid rgba(0, 212, 170, 0.35);
+}

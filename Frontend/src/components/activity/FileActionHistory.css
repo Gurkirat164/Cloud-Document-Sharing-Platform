@@ -1,0 +1,177 @@
+/* =====================================================================
+   FileActionHistory.css — compact activity widget for file sidebars
+   ===================================================================== */
+
+.fah-container {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ── Title bar ───────────────────────────────────────────────────── */
+.fah-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  margin: 0;
+}
+
+.fah-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(108, 99, 255, 0.15);
+  color: var(--color-primary);
+  border-radius: 999px;
+  margin-left: auto;
+}
+
+/* ── Log list ────────────────────────────────────────────────────── */
+.fah-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.fah-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.fah-list::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+/* ── Individual row ──────────────────────────────────────────────── */
+.fah-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.12s;
+}
+
+.fah-row:last-child {
+  border-bottom: none;
+}
+
+.fah-row:hover {
+  background: rgba(108, 99, 255, 0.05);
+}
+
+/* ── Row body: actor + IP ────────────────────────────────────────── */
+.fah-row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.fah-actor {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fah-ip {
+  font-size: 0.72rem;
+  font-family: 'Courier New', monospace;
+  color: var(--color-text-muted);
+}
+
+/* ── Timestamp ───────────────────────────────────────────────────── */
+.fah-time {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Empty / error states ────────────────────────────────────────── */
+.fah-empty,
+.fah-error {
+  padding: 1.25rem 1rem;
+  font-size: 0.82rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.fah-error {
+  color: var(--color-danger);
+}
+
+/* ── Overflow note ───────────────────────────────────────────────── */
+.fah-overflow-note {
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+  margin: 0;
+}
+
+/* ── Skeleton loading ────────────────────────────────────────────── */
+.fah-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.fah-skeleton-badge {
+  width: 60px;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    rgba(108, 99, 255, 0.07) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: fah-shimmer 1.4s infinite;
+  flex-shrink: 0;
+}
+
+.fah-skeleton-text {
+  height: 0.9rem;
+  flex: 1;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    rgba(108, 99, 255, 0.07) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: fah-shimmer 1.4s infinite 0.1s;
+}
+
+@keyframes fah-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

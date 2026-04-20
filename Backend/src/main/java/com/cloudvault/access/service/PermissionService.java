@@ -3,11 +3,13 @@ package com.cloudvault.access.service;
 import com.cloudvault.access.dto.GrantPermissionRequest;
 import com.cloudvault.access.dto.PermissionResponse;
 import com.cloudvault.access.repository.FilePermissionRepository;
+import com.cloudvault.activity.annotation.LogActivity;
 import com.cloudvault.common.exception.AccessDeniedException;
 import com.cloudvault.common.exception.ResourceNotFoundException;
 import com.cloudvault.domain.File;
 import com.cloudvault.domain.FilePermission;
 import com.cloudvault.domain.User;
+import com.cloudvault.domain.enums.EventType;
 import com.cloudvault.domain.enums.Permission;
 import com.cloudvault.file.repository.FileRepository;
 import com.cloudvault.user.repository.UserRepository;
@@ -31,6 +33,7 @@ public class PermissionService {
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
 
+    @LogActivity(EventType.PERMISSION_GRANT)
     public PermissionResponse grantPermission(String fileUuid, GrantPermissionRequest request, User currentUser) {
         File file = fileRepository.findByUuid(fileUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
@@ -80,6 +83,7 @@ public class PermissionService {
         return PermissionResponse.from(savedPermission);
     }
 
+    @LogActivity(EventType.PERMISSION_REVOKE)
     public void revokePermission(String fileUuid, Long permissionId, User currentUser) {
         File file = fileRepository.findByUuid(fileUuid)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));

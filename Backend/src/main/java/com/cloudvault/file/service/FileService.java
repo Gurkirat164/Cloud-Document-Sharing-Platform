@@ -1,10 +1,12 @@
 package com.cloudvault.file.service;
 
+import com.cloudvault.activity.annotation.LogActivity;
 import com.cloudvault.common.exception.AccessDeniedException;
 import com.cloudvault.common.exception.ResourceNotFoundException;
 import com.cloudvault.common.exception.StorageQuotaExceededException;
 import com.cloudvault.domain.File;
 import com.cloudvault.domain.User;
+import com.cloudvault.domain.enums.EventType;
 import com.cloudvault.file.dto.FileMetadataRequest;
 import com.cloudvault.file.dto.FileResponse;
 import com.cloudvault.file.dto.PresignedUrlResponse;
@@ -49,6 +51,7 @@ public class FileService {
      * @param user        authenticated user performing the upload
      * @return presigned URL + confirmed S3 key + TTL
      */
+    @LogActivity(EventType.FILE_DOWNLOAD)
     public PresignedUrlResponse getPresignedUploadUrl(String filename, String contentType, User user) {
         String sanitised = filename.replaceAll("[^a-zA-Z0-9._-]", "_");
         String s3Key = "users/" + user.getUuid() + "/" + UUID.randomUUID() + "-" + sanitised;
@@ -64,6 +67,7 @@ public class FileService {
      * @param user    authenticated uploader
      * @return the saved FileResponse
      */
+    @LogActivity(EventType.FILE_UPLOAD)
     @Transactional
     public FileResponse saveFileMetadata(FileMetadataRequest request, User user) {
         // Quota check before saving
@@ -126,6 +130,7 @@ public class FileService {
      * @param fileUuid public UUID of the file to delete
      * @param user     authenticated user performing the deletion
      */
+    @LogActivity(EventType.FILE_DELETE)
     @Transactional
     public void deleteFile(String fileUuid, User user) {
         File file = fileRepository.findByUuidAndIsDeletedFalse(fileUuid)

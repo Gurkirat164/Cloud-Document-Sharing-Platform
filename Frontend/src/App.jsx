@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import DashboardPage from './pages/DashboardPage';
+import ActivityDashboardPage from './pages/ActivityDashboardPage';
 
 const AdminPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Admin Panel</h1>;
 const NotFoundPage = () => <h1 style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>404 Not Found</h1>;
@@ -32,6 +33,12 @@ const App = () => {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/activity" element={
+            <ProtectedRoute>
+              <ActivityDashboardPage />
             </ProtectedRoute>
           } />
           

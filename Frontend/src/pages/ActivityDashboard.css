@@ -1,0 +1,436 @@
+/* =====================================================================
+   ActivityDashboard.css — layout, table, filters, and responsive styles
+   Matches the dark CloudVault theme (--color-* custom properties from index.css)
+   ===================================================================== */
+
+/* ── Page shell ──────────────────────────────────────────────────── */
+.activity-page {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  padding: 2rem 1.5rem;
+}
+
+/* ── Header row ──────────────────────────────────────────────────── */
+.activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.75rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.activity-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.activity-title span {
+  color: var(--color-primary);
+}
+
+/* ── Export CSV button (ghost style) ─────────────────────────────── */
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  white-space: nowrap;
+}
+
+.btn-export:hover:not(:disabled) {
+  background: rgba(108, 99, 255, 0.12);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.18);
+}
+
+.btn-export:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Filter bar ──────────────────────────────────────────────────── */
+.activity-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.filter-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.filter-select,
+.filter-input,
+.filter-date {
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.18s;
+  min-width: 0;
+}
+
+.filter-select {
+  cursor: pointer;
+  padding-right: 2rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+}
+
+.filter-input {
+  flex: 1 1 180px;
+}
+
+.filter-date {
+  width: 155px;
+  color-scheme: dark;
+}
+
+.filter-select:focus,
+.filter-input:focus,
+.filter-date:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+}
+
+.filter-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.btn-clear-filters {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-clear-filters:hover {
+  color: var(--color-danger);
+}
+
+/* ── Active-filter chip count ────────────────────────────────────── */
+.filter-count-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 999px;
+}
+
+/* ── Summary bar ─────────────────────────────────────────────────── */
+.activity-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.summary-count {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.summary-count strong {
+  color: var(--color-text);
+}
+
+/* ── Table wrapper — horizontal scroll on small screens ─────────── */
+.activity-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+/* ── Table ───────────────────────────────────────────────────────── */
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.activity-table thead {
+  background: rgba(108, 99, 255, 0.08);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.activity-table th {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.activity-table td {
+  padding: 0.8rem 1rem;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+/* Zebra stripes */
+.activity-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.activity-table tbody tr:hover {
+  background: rgba(108, 99, 255, 0.06);
+  transition: background 0.12s;
+}
+
+.activity-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Muted secondary text inside cells */
+.cell-muted {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+/* Metadata cell — truncated with tooltip via title attr */
+.cell-metadata {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+/* IP address monospace */
+.cell-ip {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+/* ── Empty / loading / error states ─────────────────────────────── */
+.activity-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  gap: 1rem;
+  text-align: center;
+}
+
+.state-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.state-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.state-subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  max-width: 380px;
+}
+
+/* Loading skeleton shimmer */
+.skeleton-row td {
+  padding: 1rem;
+}
+
+.skeleton-cell {
+  height: 1rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 25%,
+    rgba(108, 99, 255, 0.06) 50%,
+    var(--color-surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Error banner ────────────────────────────────────────────────── */
+.activity-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 77, 109, 0.1);
+  border: 1px solid rgba(255, 77, 109, 0.3);
+  border-radius: var(--radius);
+  color: #ff4d6d;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Pagination ──────────────────────────────────────────────────── */
+.activity-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.pagination-info {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.btn-page:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: rgba(108, 99, 255, 0.08);
+}
+
+.btn-page:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-number-badge {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(108, 99, 255, 0.12);
+  border-radius: var(--radius-sm);
+}
+
+.rows-per-page {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.rows-select {
+  height: 2rem;
+  padding: 0 0.5rem;
+  font-size: 0.82rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .activity-page {
+    padding: 1rem;
+  }
+
+  .activity-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-input {
+    width: 100%;
+  }
+
+  .filter-date {
+    width: 100%;
+  }
+
+  .filter-divider {
+    display: none;
+  }
+
+  .activity-pagination {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .activity-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
