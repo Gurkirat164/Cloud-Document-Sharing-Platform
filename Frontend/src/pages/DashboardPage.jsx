@@ -1,11 +1,23 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { uploadFile, listFiles, deleteFile } from '../api/fileApi';
+import { useState, useCallback, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
+import {
+  uploadFile,
+  getPresignedUploadUrl,
+  uploadFileToS3,
+  saveFileMetadata,
+  listFiles,
+  deleteFile as deleteFileApi,
+  getFileStats,
+  getRecentFiles,
+} from '../api/fileApi';
 import useAuth from '../hooks/useAuth';
 import ShareModal from '../components/sharing/ShareModal';
+import StorageIndicator from '../components/StorageIndicator';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
+const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB hard limit (separate from quota)
 
 const ALLOWED_TYPES = {
   'image/jpeg': true,
@@ -43,15 +55,15 @@ const formatBytes = (bytes) => {
 
 const getFileIconMeta = (mimeType) => {
   if (!mimeType) return { icon: '📄', color: '#64748b' };
-  if (mimeType.startsWith('image/')) return { icon: '🖼️', color: '#8b5cf6' };
-  if (mimeType.startsWith('video/')) return { icon: '🎬', color: '#ef4444' };
-  if (mimeType.startsWith('audio/')) return { icon: '🎵', color: '#f59e0b' };
-  if (mimeType === 'application/pdf') return { icon: '📕', color: '#f87171' };
+  if (mimeType.startsWith('image/'))   return { icon: '🖼️', color: '#8b5cf6' };
+  if (mimeType.startsWith('video/'))   return { icon: '🎬', color: '#ef4444' };
+  if (mimeType.startsWith('audio/'))   return { icon: '🎵', color: '#f59e0b' };
+  if (mimeType === 'application/pdf')  return { icon: '📕', color: '#f87171' };
   if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return { icon: '📊', color: '#4ade80' };
-  if (mimeType.includes('word') || mimeType.includes('document')) return { icon: '📝', color: '#60a5fa' };
+  if (mimeType.includes('word') || mimeType.includes('document'))     return { icon: '📝', color: '#60a5fa' };
   if (mimeType.includes('presentation')) return { icon: '📊', color: '#fb923c' };
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return { icon: '🗜️', color: '#a78bfa' };
-  if (mimeType === 'text/plain') return { icon: '📃', color: '#94a3b8' };
+  if (mimeType.includes('zip') || mimeType.includes('archive'))       return { icon: '🗜️', color: '#a78bfa' };
+  if (mimeType === 'text/plain')   return { icon: '📃', color: '#94a3b8' };
   if (mimeType === 'application/json') return { icon: '{ }', color: '#34d399' };
   return { icon: '📄', color: '#64748b' };
 };
@@ -60,17 +72,17 @@ const timeAgo = (isoString) => {
   if (!isoString) return '';
   const diff = Date.now() - new Date(isoString).getTime();
   const secs = Math.floor(diff / 1000);
-  if (secs < 60) return 'just now';
+  if (secs < 60)  return 'just now';
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60)  return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24)   return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30)  return `${days}d ago`;
   return new Date(isoString).toLocaleDateString();
 };
 
-const validateFile = (file) => {
+const validateFile = (file, storageUsed, storageQuota) => {
   if (!ALLOWED_TYPES[file.type]) {
     return `File type "${file.type || 'unknown'}" is not supported`;
   }
@@ -79,6 +91,10 @@ const validateFile = (file) => {
   }
   if (file.size === 0) {
     return 'File is empty';
+  }
+  // Client-side quota pre-check (UX only — server always enforces)
+  if (storageQuota && file.size > (storageQuota - storageUsed)) {
+    return `Not enough storage space. You need ${formatBytes(file.size)} but only ${formatBytes(storageQuota - storageUsed)} is available.`;
   }
   return null;
 };
@@ -109,10 +125,6 @@ const injectStyles = () => {
       0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99,102,241,0.5); }
       70%  { transform: scale(1);    box-shadow: 0 0 0 14px rgba(99,102,241,0);  }
       100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(99,102,241,0);    }
-    }
-    @keyframes cv-progress-stripe {
-      from { background-position: 0 0; }
-      to   { background-position: 40px 0; }
     }
 
     .cv-file-card {
@@ -146,7 +158,7 @@ const injectStyles = () => {
       flex-shrink: 0;
       white-space: nowrap;
     }
-    .cv-delete-btn:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.5); }
+    .cv-delete-btn:hover   { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.5); }
     .cv-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .cv-skeleton {
@@ -163,14 +175,8 @@ const injectStyles = () => {
       background: rgba(255,255,255,0.03);
       animation: cv-fadeIn 0.25s ease both;
     }
-    .cv-upload-item.error {
-      border-color: rgba(239,68,68,0.3);
-      background: rgba(239,68,68,0.06);
-    }
-    .cv-upload-item.done {
-      border-color: rgba(74,222,128,0.25);
-      background: rgba(74,222,128,0.05);
-    }
+    .cv-upload-item.error { border-color: rgba(239,68,68,0.3);  background: rgba(239,68,68,0.06); }
+    .cv-upload-item.done  { border-color: rgba(74,222,128,0.25); background: rgba(74,222,128,0.05); }
 
     .cv-progress-bar {
       height: 5px;
@@ -187,14 +193,8 @@ const injectStyles = () => {
       transition: width 0.25s ease;
       animation: cv-shimmer 1.5s linear infinite;
     }
-    .cv-progress-fill.done {
-      background: #4ade80;
-      animation: none;
-    }
-    .cv-progress-fill.error {
-      background: #f87171;
-      animation: none;
-    }
+    .cv-progress-fill.done  { background: #4ade80; animation: none; }
+    .cv-progress-fill.error { background: #f87171; animation: none; }
 
     .cv-badge {
       display: inline-flex;
@@ -217,21 +217,9 @@ const injectStyles = () => {
       position: relative;
       overflow: hidden;
     }
-    .cv-drop-zone:hover {
-      border-color: rgba(99,102,241,0.5);
-      background: rgba(99,102,241,0.04);
-    }
-    .cv-drop-zone.active {
-      border-color: #818cf8;
-      background: rgba(99,102,241,0.1);
-      transform: scale(1.01);
-    }
-    .cv-drop-zone .cv-drop-icon {
-      font-size: 48px;
-      display: block;
-      margin-bottom: 14px;
-      transition: transform 0.3s;
-    }
+    .cv-drop-zone:hover       { border-color: rgba(99,102,241,0.5); background: rgba(99,102,241,0.04); }
+    .cv-drop-zone.active      { border-color: #818cf8; background: rgba(99,102,241,0.1); transform: scale(1.01); }
+    .cv-drop-zone .cv-drop-icon { font-size: 48px; display: block; margin-bottom: 14px; transition: transform 0.3s; }
     .cv-drop-zone.active .cv-drop-icon { transform: scale(1.15); }
 
     .cv-validation-error {
@@ -248,8 +236,7 @@ const injectStyles = () => {
     }
 
     .cv-thumbnail {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border-radius: 8px;
       object-fit: cover;
       border: 1px solid rgba(255,255,255,0.1);
@@ -257,8 +244,7 @@ const injectStyles = () => {
     }
 
     .cv-icon-badge {
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border-radius: 10px;
       display: flex;
       align-items: center;
@@ -280,11 +266,37 @@ const injectStyles = () => {
       margin-top: 6px;
     }
     .cv-btn-retry:hover { background: rgba(99,102,241,0.15); }
+
+    .cv-alert-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      animation: cv-fadeIn 0.25s ease;
+      margin-bottom: 16px;
+    }
+    .cv-alert-banner.quota {
+      background: rgba(239,68,68,0.10);
+      border: 1px solid rgba(239,68,68,0.30);
+      color: #fca5a5;
+    }
+    .cv-alert-banner.error {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.20);
+      color: #fca5a5;
+    }
+    .cv-alert-banner.success {
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.25);
+      color: #86efac;
+    }
   `;
   document.head.appendChild(style);
 };
 
-// ─── UploadItem Component ─────────────────────────────────────────────────────
+// ─── UploadItem ───────────────────────────────────────────────────────────────
 
 const UploadItem = ({ id, name, size, progress, status, error, onRetry, file }) => {
   const statusColor = status === 'error' ? '#f87171' : status === 'done' ? '#4ade80' : '#818cf8';
@@ -293,7 +305,6 @@ const UploadItem = ({ id, name, size, progress, status, error, onRetry, file }) 
   return (
     <div className={`cv-upload-item ${status}`}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {/* File icon */}
         <div style={{ fontSize: '22px', flexShrink: 0 }}>
           {getFileIconMeta(file?.type).icon}
         </div>
@@ -308,7 +319,6 @@ const UploadItem = ({ id, name, size, progress, status, error, onRetry, file }) 
             </div>
           </div>
 
-          {/* Progress bar */}
           {(status === 'uploading' || status === 'done') && (
             <div className="cv-progress-bar">
               <div
@@ -318,7 +328,6 @@ const UploadItem = ({ id, name, size, progress, status, error, onRetry, file }) 
             </div>
           )}
 
-          {/* Error message + retry */}
           {status === 'error' && (
             <div style={{ marginTop: '5px' }}>
               <span style={{ fontSize: '11px', color: '#f87171' }}>{error}</span>
@@ -337,12 +346,11 @@ const UploadItem = ({ id, name, size, progress, status, error, onRetry, file }) 
   );
 };
 
-// ─── FileCard Component ───────────────────────────────────────────────────────
+// ─── FileCard ─────────────────────────────────────────────────────────────────
 
-const FileCard = ({ file, onDelete, onShare, thumbnails }) => {
+const FileCard = ({ file, onDelete, onShare }) => {
   const [deleting, setDeleting] = useState(false);
   const { icon, color } = getFileIconMeta(file.mimeType);
-  const thumbUrl = thumbnails[file.uuid];
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${file.originalName}"?\n\nThis action cannot be undone.`)) return;
@@ -356,16 +364,10 @@ const FileCard = ({ file, onDelete, onShare, thumbnails }) => {
 
   return (
     <div className="cv-file-card">
-      {/* Thumbnail or icon */}
-      {thumbUrl ? (
-        <img src={thumbUrl} alt={file.originalName} className="cv-thumbnail" />
-      ) : (
-        <div className="cv-icon-badge" style={{ background: `${color}18` }}>
-          <span style={{ fontSize: '20px' }}>{icon}</span>
-        </div>
-      )}
+      <div className="cv-icon-badge" style={{ background: `${color}18` }}>
+        <span style={{ fontSize: '20px' }}>{icon}</span>
+      </div>
 
-      {/* File info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {file.originalName}
@@ -385,18 +387,13 @@ const FileCard = ({ file, onDelete, onShare, thumbnails }) => {
         </div>
       </div>
 
-      {/* Actions */}
       <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
         <button
           className="cv-delete-btn"
           onClick={() => onShare(file)}
-          style={{
-            background: 'transparent',
-            border: '1px solid rgba(99,102,241,0.4)',
-            color: '#818cf8',
-          }}
-          onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; }}
-          onMouseOut={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          style={{ background: 'transparent', border: '1px solid rgba(99,102,241,0.4)', color: '#818cf8' }}
+          onMouseOver={(e)  => { e.currentTarget.style.background = 'rgba(99,102,241,0.15)'; }}
+          onMouseOut={(e)   => { e.currentTarget.style.background = 'transparent'; }}
         >
           🔗 Share
         </button>
@@ -406,9 +403,9 @@ const FileCard = ({ file, onDelete, onShare, thumbnails }) => {
           disabled={deleting}
           aria-label={`Delete ${file.originalName}`}
         >
-          {deleting ? (
-            <span style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid #f87171', borderTopColor: 'transparent', borderRadius: '50%', animation: 'cv-spin 0.7s linear infinite', verticalAlign: 'middle' }} />
-          ) : '🗑 Delete'}
+          {deleting
+            ? <span style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid #f87171', borderTopColor: 'transparent', borderRadius: '50%', animation: 'cv-spin 0.7s linear infinite', verticalAlign: 'middle' }} />
+            : '🗑 Delete'}
         </button>
       </div>
     </div>
@@ -428,7 +425,7 @@ const SkeletonCard = () => (
   </div>
 );
 
-// ─── ValidationBanner ─────────────────────────────────────────────────────────
+// ─── ValidationBanner ────────────────────────────────────────────────────────
 
 const ValidationBanner = ({ errors, onDismiss }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '18px' }}>
@@ -446,53 +443,86 @@ const ValidationBanner = ({ errors, onDismiss }) => (
 
 const DashboardPage = () => {
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
 
-  // State
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [files, setFiles] = useState([]);
-  const [loadingFiles, setLoadingFiles] = useState(true);
-  const [uploads, setUploads] = useState([]);
+  // ── State ────────────────────────────────────────────────────────────────
+  const [selectedFile, setSelectedFile]         = useState(null);
+  const [uploads, setUploads]                   = useState([]);
   const [validationErrors, setValidationErrors] = useState([]);
-  const [dragging, setDragging] = useState(false);
-  const [thumbnails, setThumbnails] = useState({});    // uuid → objectURL
-  const [showUploads, setShowUploads] = useState(true);
+  const [dragging, setDragging]                 = useState(false);
+  const [showUploads, setShowUploads]           = useState(true);
+  const [globalAlert, setGlobalAlert]           = useState(null); // { type, message }
 
   const fileInputRef = useRef(null);
-  const dragCounter = useRef(0);  // avoids flicker from child drag events
+  const dragCounter  = useRef(0);
 
-  // Inject animations once
-  useEffect(() => { injectStyles(); }, []);
+  // Inject CSS animations once on mount
+  useRef(() => injectStyles()).current === undefined && injectStyles();
 
-  // Fetch files
-  const fetchFiles = useCallback(async () => {
-    setLoadingFiles(true);
-    try {
-      const paged = await listFiles();
-      setFiles(paged?.content ?? []);
-    } catch (err) {
-      console.error('Failed to load files', err);
-    } finally {
-      setLoadingFiles(false);
-    }
-  }, []);
+  // ── React Query: storage stats ───────────────────────────────────────────
+  const {
+    data: stats,
+    isLoading: statsLoading,
+  } = useQuery({
+    queryKey: ['fileStats'],
+    queryFn:  getFileStats,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
 
-  useEffect(() => { fetchFiles(); }, [fetchFiles]);
+  // ── React Query: file list ───────────────────────────────────────────────
+  const {
+    data:      filesData,
+    isLoading: filesLoading,
+    refetch:   refetchFiles,
+  } = useQuery({
+    queryKey: ['files'],
+    queryFn:  listFiles,
+    staleTime: 15_000,
+  });
 
-  // Generate local image thumbnails for image files in the list
-  useEffect(() => {
-    // For locally uploaded file objects (before they're on cloud) we can't generate URLs
-    // This is just for display purposes — currently no-op since we don't have download URLs
-    // The hook is here to be wired up when presigned GET URLs are added
-  }, [files]);
+  // ── React Query: recent files ────────────────────────────────────────────
+  const { data: recentFiles } = useQuery({
+    queryKey: ['recentFiles'],
+    queryFn:  getRecentFiles,
+    staleTime: 15_000,
+  });
 
-  // ── Core upload handler ──────────────────────────────────────────────────
+  const files = filesData?.content ?? [];
+
+  // Derived storage values (prefer live stats, fall back to auth user fields)
+  const storageUsed  = stats?.storageUsed  ?? user?.storageUsed  ?? 0;
+  const storageQuota = stats?.storageQuota ?? user?.storageQuota ?? 5_368_709_120;
+
+  // ── Mutation: delete file ────────────────────────────────────────────────
+  const deleteMutation = useMutation({
+    mutationFn: deleteFileApi,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ['fileStats'] });
+      queryClient.invalidateQueries({ queryKey: ['recentFiles'] });
+    },
+    onError: (err) => {
+      setGlobalAlert({
+        type:    'error',
+        message: err.response?.data?.message || err.message || 'Delete failed. Please try again.',
+      });
+    },
+  });
+
+  const handleDelete = async (uuid) => {
+    await deleteMutation.mutateAsync(uuid);
+  };
+
+  // ── Upload flow ──────────────────────────────────────────────────────────
 
   const processFiles = useCallback((fileList) => {
     const toUpload = [];
-    const errors = [];
+    const errors   = [];
 
     Array.from(fileList).forEach((file) => {
-      const err = validateFile(file);
+      // Pass live storage values to client-side quota pre-check
+      const err = validateFile(file, storageUsed, storageQuota);
       if (err) {
         errors.push({ name: file.name, reason: err });
       } else {
@@ -501,98 +531,117 @@ const DashboardPage = () => {
     });
 
     if (errors.length) {
-      setValidationErrors(prev => [...prev, ...errors]);
+      setValidationErrors((prev) => [...prev, ...errors]);
     }
 
     toUpload.forEach((file) => {
-      const id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+      const id = crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2);
 
-      setUploads(prev => [
+      // Register the upload item immediately so the user sees it
+      setUploads((prev) => [
         { id, name: file.name, size: file.size, progress: 0, status: 'uploading', file },
         ...prev,
       ]);
 
-      uploadFile(file, (pct) => {
-        setUploads(prev => prev.map(u => u.id === id ? { ...u, progress: pct } : u));
-      })
-        .then(() => {
-          setUploads(prev => prev.map(u => u.id === id
-            ? { ...u, progress: 100, status: 'done' }
-            : u
-          ));
-          fetchFiles();
-          setTimeout(() => {
-            setUploads(prev => prev.filter(u => u.id !== id));
-          }, 4000);
-        })
-        .catch((err) => {
-          const msg = err.response?.data?.message || err.response?.data?.data?.sizeBytes || err.message || 'Upload failed';
-          setUploads(prev => prev.map(u => u.id === id
-            ? { ...u, status: 'error', error: msg }
-            : u
-          ));
-        });
+      const updateProgress = (pct) => {
+        setUploads((prev) =>
+          prev.map((u) => (u.id === id ? { ...u, progress: pct } : u))
+        );
+      };
+
+      const markDone = () => {
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.id === id ? { ...u, progress: 100, status: 'done' } : u
+          )
+        );
+        // Invalidate queries after upload — refreshes stats + file list
+        queryClient.invalidateQueries({ queryKey: ['files'] });
+        queryClient.invalidateQueries({ queryKey: ['fileStats'] });
+        queryClient.invalidateQueries({ queryKey: ['recentFiles'] });
+        // Auto-dismiss the done item after 4 s
+        setTimeout(() => {
+          setUploads((prev) => prev.filter((u) => u.id !== id));
+        }, 4000);
+      };
+
+      const markError = (message) => {
+        setUploads((prev) =>
+          prev.map((u) =>
+            u.id === id ? { ...u, status: 'error', error: message } : u
+          )
+        );
+      };
+
+      // Run the 3-step upload
+      (async () => {
+        try {
+          // Step 1 — early quota pre-check + get presigned URL
+          const { presignedUrl, s3Key } = await getPresignedUploadUrl(
+            file.name,
+            file.type,
+            file.size
+          );
+
+          // Step 2 — PUT directly to S3 with progress
+          await uploadFileToS3(presignedUrl, file, updateProgress);
+
+          // Step 3 — register metadata with backend (definitive quota check)
+          await saveFileMetadata({
+            originalName: file.name,
+            s3Key,
+            mimeType:  file.type,
+            sizeBytes: file.size,
+          });
+
+          markDone();
+        } catch (err) {
+          const status = err.response?.status;
+
+          let message;
+          if (status === 413 || (err.message && err.message.includes('quota'))) {
+            message = 'Not enough storage space. Please delete some files or contact admin.';
+            setGlobalAlert({ type: 'quota', message });
+          } else {
+            message =
+              err.response?.data?.message ||
+              err.message ||
+              'Upload failed. Please try again.';
+          }
+
+          markError(message);
+        }
+      })();
     });
-  }, [fetchFiles]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageUsed, storageQuota, queryClient]);
 
-  const handleRetry = useCallback((id, file) => {
-    // Remove the failed item and re-queue it
-    setUploads(prev => prev.filter(u => u.id !== id));
-    if (file) processFiles([file]);
-  }, [processFiles]);
+  const handleRetry = useCallback(
+    (id, file) => {
+      setUploads((prev) => prev.filter((u) => u.id !== id));
+      if (file) processFiles([file]);
+    },
+    [processFiles]
+  );
 
-  // ── Drag events ──────────────────────────────────────────────────────────
-
-  const handleDragEnter = (e) => {
-    e.preventDefault();
-    dragCounter.current++;
-    setDragging(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    dragCounter.current--;
-    if (dragCounter.current === 0) setDragging(false);
-  };
-
-  const handleDragOver = (e) => { e.preventDefault(); };
-
-  const handleDrop = (e) => {
+  // ── Drag & drop ──────────────────────────────────────────────────────────
+  const handleDragEnter = (e) => { e.preventDefault(); dragCounter.current++; setDragging(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); dragCounter.current--; if (dragCounter.current === 0) setDragging(false); };
+  const handleDragOver  = (e) => { e.preventDefault(); };
+  const handleDrop      = (e) => {
     e.preventDefault();
     dragCounter.current = 0;
     setDragging(false);
     processFiles(e.dataTransfer.files);
   };
 
-  // ── File list actions ────────────────────────────────────────────────────
-
-  const handleDelete = async (uuid) => {
-    await deleteFile(uuid);
-    setFiles(prev => prev.filter(f => f.uuid !== uuid));
-    // Also revoke thumbnail URL if any
-    if (thumbnails[uuid]) {
-      URL.revokeObjectURL(thumbnails[uuid]);
-      setThumbnails(prev => { const n = { ...prev }; delete n[uuid]; return n; });
-    }
-  };
-
-  const dismissError = (idx) => {
-    setValidationErrors(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const dismissAllErrors = () => setValidationErrors([]);
-
   // ── Derived ──────────────────────────────────────────────────────────────
-
-  const usedPct = user
-    ? Math.min(100, Math.round(((user.storageUsed ?? 0) / (user.storageQuota ?? 1)) * 100))
-    : 0;
-
-  const activeUploads = uploads.filter(u => u.status === 'uploading').length;
-  const hasUploads = uploads.length > 0;
+  const activeUploads = uploads.filter((u) => u.status === 'uploading').length;
+  const hasUploads    = uploads.length > 0;
 
   // ─────────────────────────────────────────────────────────────────────────
-
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0a0818 0%,#1a1235 40%,#0f1a2e 100%)', fontFamily: "'Inter',sans-serif", color: '#e2e8f0' }}>
 
@@ -629,6 +678,7 @@ const DashboardPage = () => {
             </div>
           </div>
           <button
+            id="logout-btn"
             onClick={logout}
             style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '12.5px', fontFamily: 'Inter,sans-serif', fontWeight: 600 }}
           >
@@ -640,59 +690,74 @@ const DashboardPage = () => {
       {/* ─── Main ───────────────────────────────────────────────────────── */}
       <main style={{ maxWidth: '860px', margin: '0 auto', padding: '36px 20px 60px' }}>
 
-        {/* Storage widget */}
-        {user && (
-          <div style={{ marginBottom: '28px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '16px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>Storage</span>
-                <span className="cv-badge" style={{ background: usedPct > 85 ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)', color: usedPct > 85 ? '#f87171' : '#818cf8' }}>
-                  {usedPct}%
-                </span>
-              </div>
-              <span style={{ fontSize: '13px', color: '#64748b' }}>
-                <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{formatBytes(user.storageUsed ?? 0)}</span>
-                &nbsp;/&nbsp;{formatBytes(user.storageQuota)}
-              </span>
-            </div>
-            <div style={{ height: '5px', background: 'rgba(255,255,255,0.07)', borderRadius: '5px', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${usedPct}%`,
-                background: usedPct > 85
-                  ? 'linear-gradient(90deg,#f59e0b,#ef4444)'
-                  : 'linear-gradient(90deg,#6366f1,#8b5cf6)',
-                borderRadius: '5px',
-                transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
-              }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '7px' }}>
-              <span style={{ fontSize: '11px', color: '#334155' }}>
-                {files.length} file{files.length !== 1 ? 's' : ''}
-              </span>
-              <span style={{ fontSize: '11px', color: '#334155' }}>
-                {formatBytes((user.storageQuota ?? 0) - (user.storageUsed ?? 0))} free
-              </span>
-            </div>
+        {/* Page heading */}
+        <h1 style={{ margin: '0 0 24px', fontSize: '24px', fontWeight: 800, color: '#e2e8f0', letterSpacing: '-0.02em' }}>
+          My Files
+        </h1>
+
+        {/* Global alert (quota / success) */}
+        {globalAlert && (
+          <div className={`cv-alert-banner ${globalAlert.type}`}>
+            <span>{globalAlert.type === 'quota' ? '🚫' : globalAlert.type === 'success' ? '✅' : '⚠️'}</span>
+            <span style={{ flex: 1 }}>{globalAlert.message}</span>
+            <button
+              id="dismiss-alert-btn"
+              onClick={() => setGlobalAlert(null)}
+              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: '14px', opacity: 0.7, padding: 0 }}
+            >✕</button>
           </div>
         )}
 
-        {/* Validation errors */}
+        {/* ── Storage Indicator ──────────────────────────────────────────── */}
+        <div style={{ marginBottom: '28px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Storage
+            </span>
+            <span style={{ fontSize: '12px', color: '#475569' }}>
+              {statsLoading
+                ? 'Loading…'
+                : `${stats?.totalFiles ?? 0} file${(stats?.totalFiles ?? 0) !== 1 ? 's' : ''}`}
+            </span>
+          </div>
+
+          {statsLoading ? (
+            <div>
+              <div className="cv-skeleton" style={{ height: 8, borderRadius: 100, marginBottom: 8 }} />
+              <div className="cv-skeleton" style={{ height: 11, width: '40%' }} />
+            </div>
+          ) : (
+            <StorageIndicator
+              storageUsed={storageUsed}
+              storageQuota={storageQuota}
+              showDetails={true}
+            />
+          )}
+        </div>
+
+        {/* ── Validation errors ──────────────────────────────────────────── */}
         {validationErrors.length > 0 && (
           <div style={{ marginBottom: '18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '13px', color: '#f87171', fontWeight: 600 }}>
                 {validationErrors.length} file{validationErrors.length > 1 ? 's' : ''} rejected
               </span>
-              <button onClick={dismissAllErrors} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '12px', fontFamily: 'Inter,sans-serif' }}>
+              <button
+                id="clear-errors-btn"
+                onClick={() => setValidationErrors([])}
+                style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '12px', fontFamily: 'Inter,sans-serif' }}
+              >
                 Clear all
               </button>
             </div>
-            <ValidationBanner errors={validationErrors} onDismiss={dismissError} />
+            <ValidationBanner
+              errors={validationErrors}
+              onDismiss={(idx) => setValidationErrors((prev) => prev.filter((_, i) => i !== idx))}
+            />
           </div>
         )}
 
-        {/* Drop zone */}
+        {/* ── Drop zone / upload button ──────────────────────────────────── */}
         <div
           id="upload-drop-zone"
           className={`cv-drop-zone${dragging ? ' active' : ''}`}
@@ -705,7 +770,7 @@ const DashboardPage = () => {
           role="button"
           tabIndex={0}
           aria-label="Upload files"
-          onKeyDown={e => e.key === 'Enter' && fileInputRef.current?.click()}
+          onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
         >
           <input
             ref={fileInputRef}
@@ -713,7 +778,7 @@ const DashboardPage = () => {
             type="file"
             multiple
             style={{ display: 'none' }}
-            onChange={e => { processFiles(e.target.files); e.target.value = ''; }}
+            onChange={(e) => { processFiles(e.target.files); e.target.value = ''; }}
             accept={Object.keys(ALLOWED_TYPES).join(',')}
           />
 
@@ -726,12 +791,9 @@ const DashboardPage = () => {
             or <span style={{ color: '#818cf8', fontWeight: 600 }}>click to browse</span>
           </p>
 
-          {/* Allowed types hint */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
-            {['PDF', 'Images', 'Word', 'Excel', 'ZIP', 'Video', 'Audio'].map(t => (
-              <span key={t} className="cv-badge" style={{ background: 'rgba(255,255,255,0.05)', color: '#64748b' }}>
-                {t}
-              </span>
+            {['PDF', 'Images', 'Word', 'Excel', 'ZIP', 'Video', 'Audio'].map((t) => (
+              <span key={t} className="cv-badge" style={{ background: 'rgba(255,255,255,0.05)', color: '#64748b' }}>{t}</span>
             ))}
           </div>
           <p style={{ fontSize: '11px', color: '#334155', marginTop: '10px', marginBottom: 0 }}>
@@ -739,7 +801,7 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        {/* Upload queue */}
+        {/* ── Upload queue ───────────────────────────────────────────────── */}
         {hasUploads && (
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -751,14 +813,17 @@ const DashboardPage = () => {
                   </span>
                 )}
               </div>
-              <button onClick={() => setShowUploads(v => !v)} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '12px', fontFamily: 'Inter,sans-serif' }}>
+              <button
+                onClick={() => setShowUploads((v) => !v)}
+                style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '12px', fontFamily: 'Inter,sans-serif' }}
+              >
                 {showUploads ? '▲ Hide' : '▼ Show'}
               </button>
             </div>
 
             {showUploads && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                {uploads.map(u => (
+                {uploads.map((u) => (
                   <UploadItem key={u.id} {...u} onRetry={handleRetry} />
                 ))}
               </div>
@@ -766,29 +831,68 @@ const DashboardPage = () => {
           </div>
         )}
 
-        {/* File list */}
+        {/* ── Recent Files widget ────────────────────────────────────────── */}
+        {recentFiles && recentFiles.length > 0 && (
+          <div style={{ marginBottom: '28px' }}>
+            <h2 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Recent uploads
+            </h2>
+            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+              {recentFiles.map((f) => {
+                const { icon, color } = getFileIconMeta(f.mimeType);
+                return (
+                  <div
+                    key={f.uuid}
+                    style={{
+                      minWidth: '120px', maxWidth: '140px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                      borderRadius: '12px', padding: '12px 10px',
+                      textAlign: 'center', flexShrink: 0,
+                      animation: 'cv-fadeIn 0.3s ease',
+                    }}
+                  >
+                    <div style={{ fontSize: '28px', marginBottom: '6px' }}>{icon}</div>
+                    <p style={{ margin: 0, fontSize: '11px', fontWeight: 600, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {f.originalName}
+                    </p>
+                    <p style={{ margin: '3px 0 0', fontSize: '10px', color: '#475569' }}>
+                      {formatBytes(f.sizeBytes)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── File list ─────────────────────────────────────────────────── */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#cbd5e1' }}>
               Your Files
-              {!loadingFiles && (
+              {!filesLoading && (
                 <span style={{ marginLeft: 8, fontSize: '13px', fontWeight: 500, color: '#475569' }}>
                   ({files.length})
                 </span>
               )}
             </h2>
             <button
-              onClick={fetchFiles}
-              disabled={loadingFiles}
-              style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '13px', fontFamily: 'Inter,sans-serif', opacity: loadingFiles ? 0.5 : 1 }}
+              id="refresh-files-btn"
+              onClick={() => {
+                refetchFiles();
+                queryClient.invalidateQueries({ queryKey: ['fileStats'] });
+              }}
+              disabled={filesLoading}
+              style={{ background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: '13px', fontFamily: 'Inter,sans-serif', opacity: filesLoading ? 0.5 : 1 }}
             >
               ↻ Refresh
             </button>
           </div>
 
-          {loadingFiles ? (
+          {filesLoading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+              {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
             </div>
           ) : files.length === 0 ? (
             <div style={{
@@ -798,7 +902,7 @@ const DashboardPage = () => {
             }}>
               <div style={{ fontSize: '48px', marginBottom: '14px' }}>📂</div>
               <p style={{ fontSize: '16px', fontWeight: 600, color: '#475569', margin: '0 0 6px' }}>
-                No files yet
+                No files yet. Upload your first file!
               </p>
               <p style={{ fontSize: '13px', color: '#334155', margin: 0 }}>
                 Drag & drop files above or click to start uploading
@@ -806,19 +910,19 @@ const DashboardPage = () => {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
-              {files.map(file => (
+              {files.map((file) => (
                 <FileCard
                   key={file.uuid}
                   file={file}
                   onDelete={handleDelete}
                   onShare={setSelectedFile}
-                  thumbnails={thumbnails}
                 />
               ))}
             </div>
           )}
         </div>
-        
+
+        {/* Share modal */}
         {selectedFile && (
           <ShareModal file={selectedFile} onClose={() => setSelectedFile(null)} />
         )}

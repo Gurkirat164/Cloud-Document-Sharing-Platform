@@ -3,6 +3,7 @@ package com.cloudvault.user.service;
 import com.cloudvault.common.exception.ResourceNotFoundException;
 import com.cloudvault.common.security.RoleGuard;
 import com.cloudvault.domain.User;
+import com.cloudvault.file.repository.FileRepository;
 import com.cloudvault.user.dto.UpdateProfileRequest;
 import com.cloudvault.user.dto.UserProfileResponse;
 import com.cloudvault.user.repository.UserRepository;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,9 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RoleGuard roleGuard;
+    private final FileRepository fileRepository;
+
+    // ── Existing methods — unchanged ─────────────────────────────────────────
 
     /**
      * Returns the profile of the currently authenticated user.
@@ -115,7 +120,69 @@ public class UserService {
         log.info("Admin '{}' activated user '{}'", requester.getEmail(), target.getEmail());
     }
 
-    // ===== Private helpers =====
+    // ── New quota management methods ─────────────────────────────────────────
+
+    /**
+     * Updates the storage quota for a specific user.
+     *
+     * <p>Validation rules:
+     * <ul>
+     *   <li>{@code newQuotaBytes} must be positive (> 0).</li>
+     *   <li>{@code newQuotaBytes} must be greater than the user's current
+     *       {@code storageUsed} — you cannot shrink the quota below what is already
+     *       consumed, as that would put the user in an indefinitely blocked state.</li>
+     * </ul>
+     *
+     * @param userUuid      public UUID of the target user
+     * @param newQuotaBytes new quota value in bytes
+     * @return updated {@link UserProfileResponse}
+     * @throws ResourceNotFoundException if no user with the given UUID exists
+     * @throws IllegalArgumentException  if the new quota is invalid
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserProfileResponse updateStorageQuota(String userUuid, long newQuotaBytes) {
+        User user = findByUuidOrThrow(userUuid);
+
+        if (newQuotaBytes <= 0 || newQuotaBytes <= user.getStorageUsed()) {
+            throw new IllegalArgumentException(
+                    "New quota must be greater than current usage");
+        }
+
+        user.setStorageQuota(newQuotaBytes);
+        User saved = userRepository.save(user);
+
+        log.info("Storage quota updated for user {}: {} bytes", saved.getEmail(), newQuotaBytes);
+        return UserProfileResponse.from(saved);
+    }
+
+    /**
+     * Recalculates the actual storage used for a user by querying the sum of all
+     * non-deleted file sizes, then updates the denormalised {@code storageUsed} counter.
+     *
+     * <p>This is a repair tool intended for use when the denormalised counter has
+     * drifted out of sync with reality — e.g. after a bug that skipped the
+     * decrement on deletion, or a manual DB operation.
+     *
+     * @param userUuid public UUID of the target user
+     * @return updated {@link UserProfileResponse} with the corrected storage value
+     * @throws ResourceNotFoundException if no user with the given UUID exists
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserProfileResponse recalculateStorageUsed(String userUuid) {
+        User user = findByUuidOrThrow(userUuid);
+
+        long previousUsed = user.getStorageUsed();
+        long actualUsed   = fileRepository.sumSizeByOwnerIdAndIsDeletedFalse(user.getId());
+
+        user.setStorageUsed(actualUsed);
+        User saved = userRepository.save(user);
+
+        log.info("Storage recalculated for user {}: actual={} bytes, previous={} bytes",
+                saved.getEmail(), actualUsed, previousUsed);
+        return UserProfileResponse.from(saved);
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
 
     private User findByUuidOrThrow(String uuid) {
         return userRepository.findByUuid(uuid)

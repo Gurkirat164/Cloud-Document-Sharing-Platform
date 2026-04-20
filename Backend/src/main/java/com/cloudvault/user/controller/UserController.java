@@ -127,7 +127,7 @@ public class UserController {
     }
 
     /**
-     * PATCH /api/v1/api/users/{uuid}/activate
+     * PATCH /api/users/{uuid}/activate
      * Re-enables a previously deactivated user account.
      * Access: ROLE_ADMIN only.
      */
@@ -143,4 +143,58 @@ public class UserController {
         userService.activateUser(uuid, requester);
         return ResponseEntity.ok(ApiResponse.success("User activated", null));
     }
+
+    // ── Quota management endpoints (ADMIN only) ───────────────────────────────
+
+    /**
+     * PATCH /api/users/{uuid}/quota?quotaBytes=10737418240
+     *
+     * <p>Updates the storage quota for the target user. The new quota must be
+     * a positive value and must exceed the user's current storage usage.
+     *
+     * @param uuid       public UUID of the target user
+     * @param quotaBytes new quota value in bytes
+     * @return updated {@link UserProfileResponse}
+     */
+    @PatchMapping("/{uuid}/quota")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary     = "Update storage quota for a user",
+        description = "ADMIN only. Value in bytes. Must be > 0 and > current storageUsed."
+    )
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateStorageQuota(
+            @PathVariable String uuid,
+            @RequestParam long quotaBytes) {
+
+        UserProfileResponse updated = userService.updateStorageQuota(uuid, quotaBytes);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Storage quota updated successfully", updated));
+    }
+
+    /**
+     * POST /api/users/{uuid}/recalculate-storage
+     *
+     * <p>Repair tool that recomputes the user's {@code storageUsed} from the actual
+     * sum of all non-deleted file sizes. Use this when the denormalised counter has
+     * drifted out of sync (e.g. after a manual DB operation or a bug in the decrement
+     * logic).
+     *
+     * @param uuid public UUID of the target user
+     * @return updated {@link UserProfileResponse} with the corrected storage value
+     */
+    @PostMapping("/{uuid}/recalculate-storage")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+        summary     = "Recalculate actual storage used for a user",
+        description = "ADMIN only. Repair tool for storage sync issues. "
+                    + "Recomputes storageUsed from the sum of all non-deleted file sizes."
+    )
+    public ResponseEntity<ApiResponse<UserProfileResponse>> recalculateStorage(
+            @PathVariable String uuid) {
+
+        UserProfileResponse updated = userService.recalculateStorageUsed(uuid);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Storage recalculated successfully", updated));
+    }
 }
+

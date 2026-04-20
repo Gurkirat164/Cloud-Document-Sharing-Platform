@@ -70,9 +70,19 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(StorageQuotaExceededException.class)
-    public ResponseEntity<ApiResponse<Void>> handleQuotaExceeded(StorageQuotaExceededException ex) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleStorageQuotaExceeded(
+            StorageQuotaExceededException ex) {
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("usedBytes",      ex.getUsedBytes());
+        details.put("quotaBytes",     ex.getQuotaBytes());
+        details.put("requestedBytes", ex.getRequestedBytes());
+        details.put("usedMB",         Math.round(ex.getUsedBytes()      / 1_048_576.0 * 10.0) / 10.0);
+        details.put("quotaMB",        Math.round(ex.getQuotaBytes()     / 1_048_576.0 * 10.0) / 10.0);
+        details.put("requestedMB",    Math.round(ex.getRequestedBytes() / 1_048_576.0 * 10.0) / 10.0);
+
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(ApiResponse.error(ex.getMessage()));
+                .body(ApiResponse.error(ex.getMessage(), details));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

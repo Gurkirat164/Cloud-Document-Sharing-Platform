@@ -60,6 +60,14 @@ public class File {
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private Instant uploadedAt;
 
+    /**
+     * The S3 version ID of the current active version.
+     * Populated after each upload when bucket versioning is enabled.
+     * {@code null} when the bucket does not have versioning enabled.
+     */
+    @Column(name = "current_s3_version_id", length = 512)
+    private String currentS3VersionId;
+
     @PrePersist
     private void prePersist() {
         this.uuid = UUID.randomUUID().toString();
