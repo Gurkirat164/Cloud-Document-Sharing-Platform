@@ -23,7 +23,8 @@ axiosInstance.interceptors.response.use((response) => {
   return response;
 }, async (error) => {
   const originalRequest = error.config;
-  if (error.response?.status === 401 && !originalRequest._retry) {
+  // Some auth failures are returned as 403 when JWT is invalid/expired.
+  if ((error.response?.status === 401 || error.response?.status === 403) && !originalRequest._retry) {
     originalRequest._retry = true;
     const refreshToken = getRefreshToken();
     if (!refreshToken) {
@@ -34,8 +35,14 @@ axiosInstance.interceptors.response.use((response) => {
     
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/auth/refresh`, { refreshToken });
-      const newAccessToken = response.data.accessToken;
-      const newRefreshToken = response.data.refreshToken || refreshToken;
+      const authData = response.data?.data;
+      const newAccessToken = authData?.accessToken;
+      const newRefreshToken = authData?.refreshToken || refreshToken;
+
+      if (!newAccessToken) {
+        throw new Error('Refresh response missing accessToken');
+      }
+
       saveTokens(newAccessToken, newRefreshToken);
       
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;

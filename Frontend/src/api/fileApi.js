@@ -83,7 +83,14 @@ export const saveFileMetadata = async ({ originalName, s3Key, mimeType, sizeByte
  * Fetch the authenticated user's file list (paginated).
  * Returns PagedResponse<FileResponse>
  */
-export const listFiles = async (page = 0, size = 20) => {
+export const listFiles = async (pageOrContext = 0, size = 20) => {
+  const page =
+    typeof pageOrContext === 'number'
+      ? pageOrContext
+      : (pageOrContext && typeof pageOrContext.pageParam === 'number'
+          ? pageOrContext.pageParam
+          : 0);
+
   const response = await axiosInstance.get('/api/files', {
     params: { page, size, sort: 'uploadedAt,desc' },
   });
